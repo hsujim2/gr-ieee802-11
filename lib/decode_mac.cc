@@ -31,8 +31,8 @@ class decode_mac_impl : public decode_mac {
 public:
 decode_mac_impl(bool log, bool debug) :
 	block("decode_mac",
-			gr::io_signature::make(1, 1, 48),
-			gr::io_signature::make(0, 0, 0)),
+			gr::io_signature::make2(2, 2, 48,64*sizeof(gr_complex)),
+			gr::io_signature::make(1, 1, 64*sizeof(gr_complex))),
 	d_log(log),
 	d_debug(debug),
 	d_snr(0),
@@ -44,12 +44,16 @@ decode_mac_impl(bool log, bool debug) :
 
 	message_port_register_out(pmt::mp("out"));
 }
-
+gr_complex channel_esti[64];
+gr_complex d_channel_esti[64];
+bool print_result;
 int general_work (int noutput_items, gr_vector_int& ninput_items,
 		gr_vector_const_void_star& input_items,
 		gr_vector_void_star& output_items) {
 
 	const uint8_t *in = (const uint8_t*)input_items[0];
+	const gr_complex *in_est = (const gr_complex*) input_items[1];
+	gr_complex *out_est = (gr_complex *) output_items[0];
 
 	int i = 0;
 
@@ -64,6 +68,8 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 			pmt::string_to_symbol("wifi_start"));
 
 		if(tags.size()) {
+			for(int i=0;i<64;i++)
+				channel_esti[i] = *(in_est+i);
 			if (d_frame_complete == false) {
 				dout << "Warning: starting to receive new frame before old frame was complete" << std::endl;
 				dout << "Already copied " << copied << " out of " << d_frame.n_sym << " symbols of last frame" << std::endl;
@@ -76,7 +82,8 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 			d_snr = pmt::to_double(pmt::dict_ref(dict, pmt::mp("snr"), pmt::from_double(0)));
 			d_nom_freq = pmt::to_double(pmt::dict_ref(dict, pmt::mp("freq"), pmt::from_double(0)));
 			d_freq_offset = pmt::to_double(pmt::dict_ref(dict, pmt::mp("freq_offset"), pmt::from_double(0)));
-
+			print_result = 0;
+			
 			ofdm_param ofdm = ofdm_param((Encoding)encoding);
 			frame_param frame = frame_param(ofdm, len_data);
 
@@ -108,13 +115,16 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 			}
 		}
 
+		for(int i=0;i<64;i++)
+			*(out_est+i) = d_channel_esti[i];
 		in += 48;
 		i++;
 	}
 
 	consume(0, i);
+	consume(1, i);
 
-	return 0;
+	return noutput_items;
 }
 
 void decode() {
@@ -140,6 +150,15 @@ void decode() {
 
 	mylog(boost::format("encoding: %1% - length: %2% - symbols: %3%")
 			% d_ofdm.encoding % d_frame.psdu_size % d_frame.n_sym);
+
+	// update the CSI while valid
+	if(print_result){
+		for(int i=0;i<64;i++)
+			d_channel_esti[i] = channel_esti[i];
+		print_result = 0;
+	}else{// to note that CSI not be updated
+		d_channel_esti[0] = gr_complex(0,0);
+	}
 
 	// create PDU
 	pmt::pmt_t blob = pmt::make_blob(out_bytes + 2, d_frame.psdu_size - 4);
@@ -210,6 +229,17 @@ void print_output() {
 			dout << std::endl;
 		}
 	}
+	mac_header *h = (mac_header*)(out_bytes + 2);// read header
+	if((d_frame.psdu_size - 4) > 20)// ignore short frame
+		if((unsigned int)out_bytes[12] != 0 && (unsigned int)out_bytes[12] != 255 ){// ignore broadcast frame
+			// save sequence for suring three antenna read the same symbol
+			channel_esti[32] = gr_complex(h->frame_control,int(h->seq_nr >> 4));
+			for(int j=0;j<3;j++){// save MAC address
+				channel_esti[j] = gr_complex((unsigned int)(h->addr1[2*j]),(unsigned int)(h->addr1[2*j+1]));
+				channel_esti[j+3] = gr_complex((unsigned int)(h->addr2[2*j]),(unsigned int)(h->addr2[2*j+1]));
+			}
+			print_result = 1;
+		}
 	dout << std::endl;
 	for(int i = 2; i < d_frame.psdu_size+2; i++) {
 		if((out_bytes[i] > 31) && (out_bytes[i] < 127)) {

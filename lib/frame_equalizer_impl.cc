@@ -37,7 +37,7 @@ frame_equalizer::make(Equalizer algo, double freq, double bw, bool log, bool deb
 frame_equalizer_impl::frame_equalizer_impl(Equalizer algo, double freq, double bw, bool log, bool debug) :
 	gr::block("frame_equalizer",
 			gr::io_signature::make(1, 1, 64 * sizeof(gr_complex)),
-			gr::io_signature::make(1, 1, 48)),
+			gr::io_signature::make2(2, 2, 48,64*sizeof(gr_complex))),
 	d_current_symbol(0), d_log(log), d_debug(debug), d_equalizer(NULL),
 	d_freq(freq), d_bw(bw), d_frame_bytes(0), d_frame_symbols(0),
 	d_freq_offset_from_synclong(0.0) {
@@ -114,11 +114,13 @@ frame_equalizer_impl::general_work (int noutput_items,
 
 	const gr_complex *in = (const gr_complex *) input_items[0];
 	uint8_t *out = (uint8_t *) output_items[0];
+	gr_complex *out_est = (gr_complex *) output_items[1];
 
 	int i = 0;
 	int o = 0;
 	gr_complex symbols[48];
 	gr_complex current_symbol[64];
+	gr_complex *temp;
 
 	dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items << std::endl;
 
@@ -150,6 +152,7 @@ frame_equalizer_impl::general_work (int noutput_items,
 		// compensate sampling offset
 		for(int i = 0; i < 64; i++) {
 			current_symbol[i] *= exp(gr_complex(0, 2*M_PI*d_current_symbol*80*(d_epsilon0 + d_er)*(i-32)/64));
+			*(out_est+i) = exp(gr_complex(0, -2*M_PI*d_current_symbol*80*(d_epsilon0+d_er)*(i-32)/64));
 		}
 
 		gr_complex p = equalizer::base::POLARITY[(d_current_symbol - 2) % 127];
@@ -193,6 +196,7 @@ frame_equalizer_impl::general_work (int noutput_items,
 		// compensate residual frequency offset
 		for(int i = 0; i < 64; i++) {
 			current_symbol[i] *= exp(gr_complex(0, -beta));
+			*(out_est+i) *= exp(gr_complex(0, beta));
 		}
 
 		// update estimate of residual frequency offset
@@ -206,6 +210,11 @@ frame_equalizer_impl::general_work (int noutput_items,
 		d_equalizer->equalize(current_symbol, d_current_symbol,
 				symbols, out + o * 48, d_frame_mod);
 
+		//save channel estimation
+		temp = d_equalizer->get_channel_esti();
+		for(int k=0;k<64;k++){	
+			*(out_est+k) *= *(temp + k);
+		}
 		// signal field
 		if(d_current_symbol == 2) {
 

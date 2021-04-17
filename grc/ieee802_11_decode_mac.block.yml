@@ -22,8 +22,18 @@ inputs:
 -   domain: stream
     dtype: byte
     vlen: 48
+-   domain: stream
+    dtype: complex
+    label: in_esti
+    vlen: 64
+    multiplicity: '1'
 
 outputs:
+-   domain: stream
+    dtype: complex
+    label: chan_esti
+    vlen: 64
+    multiplicity: '1'
 -   domain: message
     id: out
     optional: true

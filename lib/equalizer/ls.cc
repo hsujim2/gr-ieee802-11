@@ -59,3 +59,10 @@ void ls::equalize(gr_complex *in, int n, gr_complex *symbols, uint8_t *bits, boo
 double ls::get_snr() {
 	return d_snr;
 }
+gr_complex
+*ls::get_channel_esti(){
+	return d_H;
+}
+double ls::get_signal(){
+	return signal;
+}

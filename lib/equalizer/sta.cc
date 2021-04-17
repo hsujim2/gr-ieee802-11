@@ -93,3 +93,11 @@ double
 sta::get_snr() {
 	return d_snr;
 }
+gr_complex
+*sta::get_channel_esti(){
+	return d_H;
+}
+double
+sta::get_signal(){
+	return signal;
+}

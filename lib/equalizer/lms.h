@@ -30,11 +30,14 @@ public:
 	virtual void equalize(gr_complex *in, int n, gr_complex *symbols, uint8_t *bits, boost::shared_ptr<gr::digital::constellation> mod);
 private:
 	double get_snr();
-
+	double get_signal();
+	gr_complex *get_channel_esti();
 
 	gr_complex d_H[64];
 	double d_snr;
 	const double alpha = 0.5;
+	double signal;
+	double noise;
 };
 
 } /* namespace channel_estimation */

@@ -75,3 +75,11 @@ double
 comb::get_snr() {
 	return 42;
 }
+gr_complex
+*comb::get_channel_esti(){
+	return d_H;
+}
+double
+comb::get_signal(){
+	return 42;
+}

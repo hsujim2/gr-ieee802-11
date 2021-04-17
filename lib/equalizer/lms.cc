@@ -62,3 +62,11 @@ double
 lms::get_snr() {
 	return d_snr;
 }
+gr_complex
+*lms::get_channel_esti(){
+	return d_H;
+}
+double
+lms::get_signal(){
+	return signal;
+}

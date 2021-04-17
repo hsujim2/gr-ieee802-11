@@ -43,6 +43,11 @@ outputs:
     dtype: byte
     vlen: 48
     multiplicity: '1'
+-   domain: stream
+    dtype: complex
+    label: chan_esti
+    vlen: 64
+    multiplicity: '1'
 -   domain: message
     id: symbols
     optional: true
