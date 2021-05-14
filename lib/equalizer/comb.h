@@ -33,8 +33,8 @@ public:
 
 private:
 	gr_complex d_H[64];
-	double signal;
-	double noise;
+	double d_signal;
+	double d_noise;
 	const double alpha = 0.2;
 };
 

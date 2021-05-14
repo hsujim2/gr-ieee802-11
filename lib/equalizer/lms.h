@@ -36,8 +36,8 @@ private:
 	gr_complex d_H[64];
 	double d_snr;
 	const double alpha = 0.5;
-	double signal;
-	double noise;
+	double d_signal;
+	double d_noise;
 };
 
 } /* namespace channel_estimation */

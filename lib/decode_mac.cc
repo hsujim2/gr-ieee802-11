@@ -47,6 +47,7 @@ decode_mac_impl(bool log, bool debug) :
 gr_complex channel_esti[64];
 gr_complex d_channel_esti[64];
 bool print_result;
+double d_signal;
 int general_work (int noutput_items, gr_vector_int& ninput_items,
 		gr_vector_const_void_star& input_items,
 		gr_vector_void_star& output_items) {
@@ -82,6 +83,7 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 			d_snr = pmt::to_double(pmt::dict_ref(dict, pmt::mp("snr"), pmt::from_double(0)));
 			d_nom_freq = pmt::to_double(pmt::dict_ref(dict, pmt::mp("freq"), pmt::from_double(0)));
 			d_freq_offset = pmt::to_double(pmt::dict_ref(dict, pmt::mp("freq_offset"), pmt::from_double(0)));
+			d_signal = pmt::to_double(pmt::dict_ref(dict, pmt::mp("signal"), pmt::from_double(0)));
 			print_result = 0;
 			
 			ofdm_param ofdm = ofdm_param((Encoding)encoding);
@@ -233,7 +235,7 @@ void print_output() {
 	if((d_frame.psdu_size - 4) > 20)// ignore short frame
 		if((unsigned int)out_bytes[12] != 0 && (unsigned int)out_bytes[12] != 255 ){// ignore broadcast frame
 			// save sequence for suring three antenna read the same symbol
-			channel_esti[32] = gr_complex(h->frame_control,int(h->seq_nr >> 4));
+			channel_esti[32] = gr_complex(d_signal,int(h->seq_nr >> 4));
 			for(int j=0;j<3;j++){// save MAC address
 				channel_esti[j] = gr_complex((unsigned int)(h->addr1[2*j]),(unsigned int)(h->addr1[2*j+1]));
 				channel_esti[j+3] = gr_complex((unsigned int)(h->addr2[2*j]),(unsigned int)(h->addr2[2*j+1]));

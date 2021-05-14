@@ -38,7 +38,7 @@ void ls::equalize(gr_complex *in, int n, gr_complex *symbols, uint8_t *bits, boo
 			d_H[i] += in[i];
 			d_H[i] /= LONG[i] * gr_complex(2, 0);
 		}
-
+		d_signal = signal;
 		d_snr = 10 * std::log10(signal / noise / 2);
 
 	} else {
@@ -64,5 +64,5 @@ gr_complex
 	return d_H;
 }
 double ls::get_signal(){
-	return signal;
+	return d_signal;
 }
