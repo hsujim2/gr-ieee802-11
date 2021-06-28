@@ -121,6 +121,7 @@ frame_equalizer_impl::general_work (int noutput_items,
 	gr_complex symbols[48];
 	gr_complex current_symbol[64];
 	gr_complex *temp;
+	gr_complex est_temp[64];
 	double d_signal;
 
 	dout << "FRAME EQUALIZER: input " << ninput_items[0] << "  output " << noutput_items << std::endl;
@@ -151,10 +152,10 @@ frame_equalizer_impl::general_work (int noutput_items,
 		std::memcpy(current_symbol, in + i*64, 64*sizeof(gr_complex));
 
 		// compensate sampling offset
-		for(int i = 0; i < 64; i++) {
-			current_symbol[i] *= exp(gr_complex(0, 2*M_PI*d_current_symbol*80*(d_epsilon0 + d_er)*(i-32)/64));
-			*(out_est+i) = exp(gr_complex(0, -2*M_PI*d_current_symbol*80*(d_epsilon0+d_er)*(i-32)/64));
-		}
+		// for(int i = 0; i < 64; i++) {
+		// 	current_symbol[i] *= exp(gr_complex(0, 2*M_PI*d_current_symbol*80*(d_epsilon0 + d_er)*(i-32)/64));
+		// 	*(out_est+i) = exp(gr_complex(0, -2*M_PI*d_current_symbol*80*(d_epsilon0+d_er)*(i-32)/64));
+		// }
 
 		gr_complex p = equalizer::base::POLARITY[(d_current_symbol - 2) % 127];
 
@@ -197,7 +198,7 @@ frame_equalizer_impl::general_work (int noutput_items,
 		// compensate residual frequency offset
 		for(int i = 0; i < 64; i++) {
 			current_symbol[i] *= exp(gr_complex(0, -beta));
-			*(out_est+i) *= exp(gr_complex(0, beta));
+			*(out_est+i) = exp(gr_complex(0, beta));
 		}
 
 		// update estimate of residual frequency offset
@@ -215,12 +216,21 @@ frame_equalizer_impl::general_work (int noutput_items,
 		temp = d_equalizer->get_channel_esti();
 		for(int k=0;k<64;k++){	
 			*(out_est+k) *= *(temp + k);
+			
 		}
+		*(out_est+59) = gr_complex(d_equalizer->get_snr(),0); 
+		*(out_est+60) = gr_complex(d_current_symbol,0);
+		if(d_current_symbol < 2)
+			for(int k=0;k<64;k++)
+				est_temp[k] = *(out_est+k);
+
+		
 		// signal field
 		if(d_current_symbol == 2) {
 
 			if(decode_signal_field(out + o * 48)) {
 
+				std::string csi_value="csi";
 				pmt::pmt_t dict = pmt::make_dict();
 				dict = pmt::dict_add(dict, pmt::mp("frame_bytes"), pmt::from_uint64(d_frame_bytes));
 				dict = pmt::dict_add(dict, pmt::mp("encoding"), pmt::from_uint64(d_frame_encoding));
@@ -228,6 +238,11 @@ frame_equalizer_impl::general_work (int noutput_items,
 				dict = pmt::dict_add(dict, pmt::mp("freq"), pmt::from_double(d_freq));
 				dict = pmt::dict_add(dict, pmt::mp("freq_offset"), pmt::from_double(d_freq_offset_from_synclong));
 				dict = pmt::dict_add(dict, pmt::mp("signal"), pmt::from_double(d_equalizer->get_signal()));
+				for(int iii =0 ; iii<64 ; iii++){
+					std::string csi_value_temp;
+					csi_value_temp = csi_value + std::to_string(iii);
+					dict = pmt::dict_add(dict, pmt::mp(csi_value_temp), pmt::from_complex(est_temp[iii]));
+				}
 				add_item_tag(0, nitems_written(0) + o,
 						pmt::string_to_symbol("wifi_start"),
 						dict,

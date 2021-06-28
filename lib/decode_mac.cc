@@ -46,6 +46,7 @@ decode_mac_impl(bool log, bool debug) :
 }
 gr_complex channel_esti[64];
 gr_complex d_channel_esti[64];
+std::string csi_value = "csi";
 bool print_result;
 double d_signal;
 int general_work (int noutput_items, gr_vector_int& ninput_items,
@@ -68,9 +69,10 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 		get_tags_in_range(tags, 0, nread + i, nread + i + 1,
 			pmt::string_to_symbol("wifi_start"));
 
+		for(int ii=0;ii<64;ii++)
+			channel_esti[ii] = *(in_est+ii);
 		if(tags.size()) {
-			for(int i=0;i<64;i++)
-				channel_esti[i] = *(in_est+i);
+			
 			if (d_frame_complete == false) {
 				dout << "Warning: starting to receive new frame before old frame was complete" << std::endl;
 				dout << "Already copied " << copied << " out of " << d_frame.n_sym << " symbols of last frame" << std::endl;
@@ -84,6 +86,12 @@ int general_work (int noutput_items, gr_vector_int& ninput_items,
 			d_nom_freq = pmt::to_double(pmt::dict_ref(dict, pmt::mp("freq"), pmt::from_double(0)));
 			d_freq_offset = pmt::to_double(pmt::dict_ref(dict, pmt::mp("freq_offset"), pmt::from_double(0)));
 			d_signal = pmt::to_double(pmt::dict_ref(dict, pmt::mp("signal"), pmt::from_double(0)));
+			// for(int ii=0;ii<64;ii++){
+			// 	std::string csi_value_temp;
+			// 	csi_value_temp = csi_value + std::to_string(ii);
+			// 	channel_esti[ii] = pmt::to_complex(pmt::dict_ref(dict, pmt::mp(csi_value_temp), pmt::from_complex(gr_complex(0,0))));
+			// }
+				
 			print_result = 0;
 			
 			ofdm_param ofdm = ofdm_param((Encoding)encoding);
